@@ -4,3 +4,4 @@ environs==9.5.*
 dj-database-url==2.1.*
 psycopg2-binary==2.9.*
 aiohttp==3.8.*
+django-relativedelta==2.0.*
