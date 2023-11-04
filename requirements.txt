@@ -1,0 +1,6 @@
+django==4.2.*
+telethon==1.32.*
+environs==9.5.*
+dj-database-url==2.1.*
+psycopg2-binary==2.9.*
+aiohttp==3.8.*
