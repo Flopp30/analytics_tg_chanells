@@ -4,7 +4,7 @@ from channel.models import Channel
 
 
 class Message(models.Model):
-    text = models.CharField(verbose_name='Текст сообщения', max_length=256, default='Empty')
+    text = models.TextField(verbose_name='Текст сообщения', default='Empty')
     views = models.BigIntegerField(verbose_name='Просмотры', default=0)
     reactions = models.BigIntegerField(verbose_name='Реакции', default=0)
     forwards = models.BigIntegerField(verbose_name='Репосты', default=0)
