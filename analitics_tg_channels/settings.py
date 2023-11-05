@@ -13,11 +13,8 @@ TG_PHONE_NUMBER = env('TG_PHONE_NUMBER', None)
 
 # Django definition
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 SECRET_KEY = env('DJ_SECRET_KEY', 'django-insecure-6)t2by)g89_nb^)5fxef$vfwh!#@rr#u+zn=y3_=vwo#x!1k^&')
-
 DEBUG = env.bool('DJ_DEBUG', True)
-
 ALLOWED_HOSTS = env.list('DJ_ALLOWED_HOSTS', ['*'])
 CSRF_TRUSTED_ORIGINS = env.list('DJ_CSRF_TRUSTED_ORIGINS', [])
 
@@ -33,6 +30,7 @@ INSTALLED_APPS = [
     "bot_parts",
     "channel",
     "message",
+    "metrics",
 ]
 
 MIDDLEWARE = [

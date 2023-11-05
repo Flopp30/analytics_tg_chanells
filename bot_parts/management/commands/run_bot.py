@@ -1,12 +1,10 @@
 import asyncio
-import itertools
 from datetime import datetime
 from pprint import pprint
-
-from asgiref.sync import sync_to_async
 from dateutil.relativedelta import relativedelta
 from django.core.management import BaseCommand, CommandError
 from telethon import TelegramClient
+from telethon.events import NewMessage
 
 from telethon.tl.functions.messages import GetDialogsRequest, GetHistoryRequest
 from telethon.tl.types import (
@@ -47,8 +45,19 @@ class Command(BaseCommand):
 
 async def main(phone: str, api_id: int, api_hash: str):
     client = TelegramClient(phone, api_id, api_hash)
+
     async with client:
         await scrapping(client)
+
+    # @client.on(NewMessage())
+    # async def create_new_post_in_db(event):
+    #     print(event)
+    #     m = await event.respond('!pong')
+    #     scheduler.run_job(time=timedelta(min=1), job=task_after_one_min)
+    #     await asyncio.sleep(5)
+    #
+    # await client.start()
+    # await client.run_until_disconnected()
 
 
 async def scrapping(client: TelegramClient):
@@ -168,3 +177,38 @@ def get_reactions_count(message: dict):
             except (IndexError, KeyError):
                 return 0
     return 0
+
+
+'''
+1 мин , 2 мин , 3 мин , 4 мин ,5 мин, 10 мин , 15 мин ,20 мин, 25 ,30 мин, 35, 45 мин, 50, 55, 1 час | end
+
+Message:
+    current_reaction_coef = message.reaction / message.views
+    current_forward_coef = message.forward / message.views
+
+scheduler_one_min():
+    channels = Channel.objects.all()
+    async for channel in channels:
+        messages = channel.messages.filter(len(metrics)__lt=5)
+        mes_ids = [mes.id for mes in messages]
+        min_mes_id, max_mes_id = min(mes_ids), max(mes_ids)
+        history = await client(GetHistoryRequest(
+            peer=target_ch,
+            offset_id=0,
+            offset_date=None,
+            add_offset=0,
+            limit=limit,
+            max_id=max_mes_id+1,
+            min_id=min_mes_id-1,
+            hash=0
+        ))
+        
+scheduler_five_min():
+    Message.object.filter(len(metrics)__gte=5, len(metrics)__lt=15)
+
+Metrics:
+    views
+    reactions
+    forwards
+    created_at
+'''

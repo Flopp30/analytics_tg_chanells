@@ -19,6 +19,21 @@ class Message(models.Model):
     created_at = models.DateTimeField(verbose_name='Создан', auto_now_add=True)
     updated_at = models.DateTimeField(verbose_name='Обновлен', auto_now=True)
 
+    current_reaction_coef = models.DecimalField(  # message.reaction / message.views
+        verbose_name='Коэффициент реакций',
+        help_text='Текущий коэффициент',
+        max_digits=5,
+        decimal_places=2,
+        default=1
+    )
+    current_forward_coef = models.DecimalField(  # message.forward / message.views
+        verbose_name='Коэффициент репостов',
+        help_text='Текущий коэффициент',
+        max_digits=5,
+        decimal_places=2,
+        default=1
+    )
+
     class Meta:
         verbose_name = 'Сообщение'
         verbose_name_plural = 'Сообщения'
