@@ -1,3 +1,5 @@
+import asyncio
+
 from django.conf import settings
 from django.db.models import Count
 from telethon import TelegramClient
@@ -48,35 +50,14 @@ async def check_messages(client: TelegramClient, one_minute: bool = True):
     updated_messages = []
     updated_channels = []
     created_metrics = []
+    tasks = []
     async for dj_channel in channels:
-        messages = (
-            dj_channel.messages
-            .prefetch_related('metrics')
-            .annotate(metrics_count=Count('metrics'))
-            .filter(**filter_kwargs)
+        tasks.append(
+            asyncio.create_task(
+                channel_process(dj_channel, filter_kwargs, client, updated_messages, created_metrics, updated_channels)
+            )
         )
-        mes_by_tg_ids: {int: DjMessage} = {
-            mes.tg_message_id: mes
-            async for mes in messages
-        }
-
-        async for tg_mes in client.iter_messages(dj_channel.chat_id, ids=list(mes_by_tg_ids.keys())):
-            tg_mes: TgMessage
-            dj_mes: DjMessage = mes_by_tg_ids.get(tg_mes.id)
-            dj_mes.forwards = tg_mes.forwards
-            dj_mes.views = tg_mes.views / 100
-            dj_mes.reactions = get_reactions_count(tg_mes)
-
-            updated_messages.append(dj_mes)
-            new_metric = Metric()
-            new_metric.update_from_message(dj_mes)
-            created_metrics.append(new_metric)
-
-            await _update_message_coeffs(dj_mes)
-            await _update_channel_coeffs(dj_channel, updated_channels)
-
-            if dj_channel.messages_count >= 20 and dj_mes.metrics_count == 4:
-                await _forward_message(client, dj_mes, dj_channel, tg_mes)
+    await asyncio.gather(*tasks)
 
     await Metric.objects.abulk_create(created_metrics)
     await DjMessage.objects.abulk_update(
@@ -87,6 +68,37 @@ async def check_messages(client: TelegramClient, one_minute: bool = True):
         updated_channels,
         ['average_forward_coef', 'average_react_coef']
     )
+
+
+async def channel_process(dj_channel, filter_kwargs, client, updated_messages, created_metrics, updated_channels):
+    messages = (
+        dj_channel.messages
+        .prefetch_related('metrics')
+        .annotate(metrics_count=Count('metrics'))
+        .filter(**filter_kwargs)
+    )
+    mes_by_tg_ids: {int: DjMessage} = {
+        mes.tg_message_id: mes
+        async for mes in messages
+    }
+
+    async for tg_mes in client.iter_messages(dj_channel.chat_id, ids=list(mes_by_tg_ids.keys())):
+        tg_mes: TgMessage
+        dj_mes: DjMessage = mes_by_tg_ids.get(tg_mes.id)
+        dj_mes.forwards = tg_mes.forwards
+        dj_mes.views = tg_mes.views / 100
+        dj_mes.reactions = get_reactions_count(tg_mes)
+
+        updated_messages.append(dj_mes)
+        new_metric = Metric()
+        new_metric.update_from_message(dj_mes)
+        created_metrics.append(new_metric)
+
+        await _update_message_coeffs(dj_mes)
+        await _update_channel_coeffs(dj_channel, updated_channels)
+
+        if dj_channel.messages_count >= 20 and dj_mes.metrics_count == 4:
+            await _forward_message(client, dj_mes, dj_channel, tg_mes)
 
 
 async def _update_channel_coeffs(dj_channel: DjChannel, updated_channels: [DjChannel]):

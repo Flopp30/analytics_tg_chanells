@@ -4,7 +4,6 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from django.conf import settings
 from django.core.management import BaseCommand, CommandError
-from django.db.models import Count
 from telethon import TelegramClient
 from telethon.events import NewMessage
 from telethon.tl.types import (
@@ -84,7 +83,7 @@ async def main(phone: str, api_id: int, api_hash: str):
 
             message = (
                 'Настройки успешно вступили в силу.\n'
-                'Для перезапуска задачи с новым интервалом отправьте !restart_task\n\n'
+                'Для перезапуска задачи с новым интервалом отправьте\n!restart_task\n\n'
                 f'Текущие настройки:\n{settings_for_send}'
             )
             await client.send_message('me', message)
@@ -109,7 +108,6 @@ async def main(phone: str, api_id: int, api_hash: str):
         if event.is_channel and isinstance(tg_mes, TgMessage):
             dj_channel, _ = (
                 await DjChannel.objects
-                .select_related('category')
                 .aget_or_create(
                     chat_id=event.chat_id,
                     defaults={
