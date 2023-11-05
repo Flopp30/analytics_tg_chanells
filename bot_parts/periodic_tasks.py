@@ -135,4 +135,11 @@ async def _forward_message(
         except (ValueError, AttributeError):
             pass
         else:
+            message = (
+                f"Реакции канала: {dj_channel.average_react_coef}\n"
+                f"Реакции сообщения: {dj_mes.average_reaction_coef}\n\n"
+                f"Репосты канала: {dj_channel.average_forward_coef}\n"
+                f"Репосты сообщения: {dj_mes.average_forward_coef}\n\n"
+            )
+            await client.send_message(target_chat_id, message)
             await client.forward_messages(target_chat_id, tg_mes)
