@@ -31,12 +31,12 @@ async def update_uploaded_channels(client: TelegramClient):
 async def check_messages(client: TelegramClient, one_minute: bool = True):
     if one_minute:
         filter_kwargs = {
-            "metrics_count__lt": 5  # 5 раз трекаем по минуте
+            "metrics_count__lt": 5  # 5 раз трекаем с интервалом минута
         }
     else:
         filter_kwargs = {
-            "metrics_count__gte": 5,  # 10 раз трекаем по 5 минут
-            "metrics_count__lt": 15,
+            "metrics_count__gte": 5,  # 10 раз трекаем с интервалом в 5 минут или 5 раз с интервалом в 10
+            "metrics_count__lt": 15 if settings.STARTING_INTERVAL_SECOND_TASK == 5 else 10,
         }
     channels = (
         DjChannel.objects

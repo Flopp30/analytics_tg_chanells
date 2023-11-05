@@ -17,6 +17,8 @@ from bot_parts.utils import get_reactions_count
 from channel.models import Channel as DjChannel
 from message.models import Message as DjMessage
 
+second_task = None
+
 
 class Command(BaseCommand):
     help = '''
@@ -43,6 +45,7 @@ class Command(BaseCommand):
 
 
 async def main(phone: str, api_id: int, api_hash: str):
+    global second_task
     client = TelegramClient(phone, api_id, api_hash)
     scheduler = AsyncIOScheduler(timezone="Europe/Moscow")
     scheduler.add_job(
@@ -53,9 +56,9 @@ async def main(phone: str, api_id: int, api_hash: str):
             "one_minute": True,
         }
     )
-    scheduler.add_job(
+    second_task = scheduler.add_job(
         periodic_tasks.check_messages,
-        trigger=IntervalTrigger(minutes=5),
+        trigger=IntervalTrigger(minutes=settings.STARTING_INTERVAL_SECOND_TASK),
         kwargs={
             "client": client,
             "one_minute": False,
@@ -79,7 +82,25 @@ async def main(phone: str, api_id: int, api_hash: str):
                     setattr(settings, key.upper(), value)
                     settings_for_send += f"{key.upper()}: {value}\n"
 
-            message = 'Настройки успешно вступили в силу.\n' + settings_for_send
+            message = (
+                'Настройки успешно вступили в силу.\n'
+                'Для перезапуска задачи с новым интервалом отправьте !restart_task\n\n'
+                f'Текущие настройки:\n{settings_for_send}'
+            )
+            await client.send_message('me', message)
+
+        if event.message.message == '!restart_task':
+            global second_task
+            scheduler.remove_job(second_task.id)
+            second_task = scheduler.add_job(
+                periodic_tasks.check_messages,
+                trigger=IntervalTrigger(minutes=settings.STARTING_INTERVAL_SECOND_TASK),
+                kwargs={
+                    "client": client,
+                    "one_minute": False,
+                }
+            )
+            message = f'Задача успешно перезапущена с интервалом в {settings.STARTING_INTERVAL_SECOND_TASK} минут'
             await client.send_message('me', message)
 
     @client.on(NewMessage(incoming=True))

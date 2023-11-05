@@ -1,0 +1,40 @@
+{% extends 'admin/base.html' %}
+{% load i18n static %}<!DOCTYPE html>
+{% get_current_language as LANGUAGE_CODE %}{% get_current_language_bidi as LANGUAGE_BIDI %}
+{% load static %}
+{% block title %}Analytic's Bot{% endblock %}
+{% block header %}
+    <div id="header">
+        <div id="branding">
+            {% block branding %}<b><i>Analytic's Bot</i></b>{% endblock %}
+        </div>
+        {% block usertools %}
+            {% if has_permission %}
+                <div id="user-tools">
+                    {% block welcome-msg %}
+                        {% translate 'Welcome,' %}
+                        <strong>{% firstof user.get_short_name user.get_username %}</strong>.
+                    {% endblock %}
+                    {% block userlinks %}
+                        {% if user.is_active and user.is_staff %}
+                            {% url 'django-admindocs-docroot' as docsroot %}
+                            {% if docsroot %}
+                                <a href="{{ docsroot }}">{% translate 'Documentation' %}</a> /
+                            {% endif %}
+                        {% endif %}
+                        {% if user.has_usable_password %}
+                            <a href="{% url 'admin:password_change' %}">{% translate 'Change password' %}</a> /
+                        {% endif %}
+                        <form id="logout-form" method="post" action="{% url 'admin:logout' %}">
+                            {% csrf_token %}
+                            <button type="submit">{% translate 'Log out' %}</button>
+                        </form>
+                        {% include "admin/color_theme_toggle.html" %}
+                    {% endblock %}
+                </div>
+            {% endif %}
+        {% endblock %}
+        {% block nav-global %}{% endblock %}
+    </div>
+{% endblock %}
+

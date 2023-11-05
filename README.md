@@ -63,8 +63,10 @@ sudo apt install pip docker docker-compose -y && sudo docker-compose up
 - При обновлении каждого канала укажите созданную подходящую категорию и включите отслеживание.
 <img src="readme_images/enable_tracking.png"/>
 
-5) В вынесенных настройках можно поправить процент превышения.
+5) В вынесенных настройках можно поправить процент превышения и интервал запуска второй задачи (5/10 минут)
 <img src="readme_images/change_settings.png"/>
 
 ### ВАЖНО.
 Чтобы настройки вступили в силу в боте: отправьте в saved messages (чат с самим собой) с авторизированного аккаунта команду ```!update_settings```
+Чтобы перезапустить задачу с новым интервалом - команда ```!restart_task```<br>
+<img src="readme_images/restart_task.png"/>

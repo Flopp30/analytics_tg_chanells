@@ -21,12 +21,19 @@ class SingletonModel(models.Model):
 
 
 class ExternalSettings(SingletonModel):
+    interval_choices = ((5, 5), (10, 10))
     additional_percents_for_repost = models.DecimalField(
         verbose_name='Процент превышения',
         help_text='Процент превышения, при котором репостим (%)',
         max_digits=5,
         decimal_places=2,
         default=30
+    )
+    starting_interval_second_task = models.IntegerField(
+        verbose_name='Интервал запуска второй задачи',
+        help_text='В минутах',
+        choices=interval_choices,
+        default=5
     )
 
     class Meta:
@@ -39,6 +46,8 @@ class ExternalSettings(SingletonModel):
 
 try:
     ext_settings, _ = ExternalSettings.objects.get_or_create(pk=1)
-    settings.ADDITIONAL_PERCENTS_FOR_REPOST = ext_settings.additional_percents_for_repost
+    for key, value in ext_settings.__dict__.items():
+        if key != 'id' and not key.startswith('_'):
+            setattr(settings, key.upper(), value)
 except OperationalError:
     pass
