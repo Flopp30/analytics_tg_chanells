@@ -1,0 +1,32 @@
+version: "3.7"
+
+services:
+
+  postgres:
+    image: postgres
+    env_file:
+      - .env
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  nginx:
+    image: nginx
+    ports:
+      - '8000:80'
+    environment:
+      UPSTREAM_SERVER: 127.0.0.1:8000
+    volumes:
+      - ./nginx-templates:/etc/nginx/templates/
+      - nginx_assets:/var/www/static/
+      - nginx_media:/var/www/media/
+    depends_on:
+      - postgres-admin
+
+
+
+volumes:
+  db_data:
+  nginx_media:
+  nginx_assets:
