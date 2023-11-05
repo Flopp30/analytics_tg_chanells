@@ -6,7 +6,7 @@ from metrics.models import Metric
 @admin.register(Metric)
 class MetricAdmin(admin.ModelAdmin):
     list_display = (
-        'id', 'message', 'views', "reactions", "forwards", "created_at"
+        'id', 'message', 'reaction_coef', 'forwards_coef', 'views', "reactions", "forwards", "created_at"
     )
     list_filter = (
         'message__channel',

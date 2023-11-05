@@ -6,5 +6,6 @@ from bot_parts.models import ExternalSettings
 
 @receiver(post_save, sender=ExternalSettings)
 def update_settings(sender, instance, **kwargs):
-    settings.MAX_FORWARD_COEF = instance.max_forward_coef
-    settings.MAX_REACTION_COEF = instance.max_reaction_coef
+    for key, value in instance.__dict__.items():
+        if key != 'id' and not key.startswith('_'):
+            setattr(settings, key.upper(), value)

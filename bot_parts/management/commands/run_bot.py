@@ -1,21 +1,21 @@
 import asyncio
-from datetime import datetime
-from pprint import pprint
-from dateutil.relativedelta import relativedelta
+
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+from django.conf import settings
 from django.core.management import BaseCommand, CommandError
+from django.db.models import Count
 from telethon import TelegramClient
 from telethon.events import NewMessage
-
-from telethon.tl.functions.messages import GetDialogsRequest, GetHistoryRequest
 from telethon.tl.types import (
-    InputPeerEmpty,
-    PeerChannel,
-    Channel as TG_CHANNEL,
-    Message as TG_MESSAGE
+    Message as TgMessage,
 )
-from django.conf import settings
-from message.models import Message as DJ_MESSAGE
-from channel.models import Channel as DJ_CHANNEL
+
+from bot_parts import periodic_tasks
+from bot_parts.models import ExternalSettings
+from bot_parts.utils import get_reactions_count
+from channel.models import Channel as DjChannel
+from message.models import Message as DjMessage
 
 
 class Command(BaseCommand):
@@ -39,176 +39,83 @@ class Command(BaseCommand):
                 'Please, set TG_PHONE_NUMBER, TG_API_ID and TG_API_HASH '
                 'in environment variables or add with command arguments'
             )
-
         asyncio.run(main(phone, int(api_id), api_hash))
 
 
 async def main(phone: str, api_id: int, api_hash: str):
     client = TelegramClient(phone, api_id, api_hash)
+    scheduler = AsyncIOScheduler(timezone="Europe/Moscow")
+    scheduler.add_job(
+        periodic_tasks.check_messages,
+        trigger=IntervalTrigger(minutes=1),
+        kwargs={
+            "client": client,
+            "one_minute": True,
+        }
+    )
+    scheduler.add_job(
+        periodic_tasks.check_messages,
+        trigger=IntervalTrigger(minutes=5),
+        kwargs={
+            "client": client,
+            "one_minute": False,
+        }
+    )
+    scheduler.add_job(
+        periodic_tasks.update_uploaded_channels,
+        trigger=IntervalTrigger(minutes=10),
+        kwargs={
+            "client": client,
+        }
+    )
 
-    async with client:
-        await scrapping(client)
+    @client.on(NewMessage(chats='me'))
+    async def reload_data(event: NewMessage.Event):
+        if event.message.message == '!update_settings':
+            ext_settings = await ExternalSettings.objects.afirst()
+            settings_for_send = ''
+            for key, value in ext_settings.__dict__.items():
+                if key != 'id' and not key.startswith('_'):
+                    setattr(settings, key.upper(), value)
+                    settings_for_send += f"{key.upper()}: {value}\n"
 
-    # @client.on(NewMessage())
-    # async def create_new_post_in_db(event):
-    #     print(event)
-    #     m = await event.respond('!pong')
-    #     scheduler.run_job(time=timedelta(min=1), job=task_after_one_min)
-    #     await asyncio.sleep(5)
-    #
-    # await client.start()
-    # await client.run_until_disconnected()
+            message = 'Настройки успешно вступили в силу.\n' + settings_for_send
+            await client.send_message('me', message)
 
-
-async def scrapping(client: TelegramClient):
-    # views
-    # reactions
-    # forwards ?
-    channels = await get_channels(client)
-    tasks = [asyncio.create_task(get_ch_messages(client, ch)) for ch in channels]
-    res = await asyncio.gather(*tasks)
-    updated_messages = []
-    is_updated = False
-    for messages_by_channel_id in res:
-        for ch_id, messages in messages_by_channel_id.items():
-            for message in messages:
-                dj_message, is_created = await DJ_MESSAGE.objects.aget_or_create(
-                    channel_id=ch_id,
-                    pk=message.get('id'),
+    @client.on(NewMessage(incoming=True))
+    async def create_new_post_in_db(event: NewMessage.Event):
+        tg_mes = event.message
+        if event.is_channel and isinstance(tg_mes, TgMessage):
+            dj_channel, _ = (
+                await DjChannel.objects
+                .select_related('category')
+                .aget_or_create(
+                    chat_id=event.chat_id,
                     defaults={
-                        "text": message.get('message'),
-                        "views": message.get('views'),
-                        "forwards": message.get('forwards'),
-                        "reactions": get_reactions_count(message),
+                        "name": event.chat.title,
+                    }
+                )
+            )
+            if dj_channel.is_tracking:
+                dj_message, is_created = await DjMessage.objects.aget_or_create(
+                    tg_message_id=tg_mes.id,
+                    channel_id=dj_channel.pk,
+                    defaults={
+                        "text": tg_mes.message,
+                        "views": tg_mes.views or 0,
+                        "forwards": tg_mes.forwards or 0,
+                        "reactions": get_reactions_count(tg_mes),
                     }
                 )
                 if not is_created:
-                    if dj_message.text != message.get('message'):
-                        dj_message.text = message.get('message')
-                        is_updated = True
+                    dj_message.message = tg_mes.message
+                    dj_message.views = tg_mes.views / 100 or 0
+                    dj_message.forwards = tg_mes.forwards or 0
+                    dj_message.reactions = get_reactions_count(tg_mes)
 
-                    if dj_message.views != message.get('views'):
-                        dj_message.views = message.get('views')
-                        is_updated = True
+                await dj_message.asave()
 
-                    if dj_message.forwards != message.get('forwards'):
-                        dj_message.forwards = message.get('forwards')
-                        is_updated = True
-
-                    if dj_message.reactions != get_reactions_count(message):
-                        dj_message.reactions = get_reactions_count(message)
-                        is_updated = True
-
-                    if is_updated:
-                        updated_messages.append(dj_message)
-                    is_updated = False
-        await DJ_MESSAGE.objects.abulk_update(updated_messages, ('text', 'forwards', 'views', 'reactions'))
-
-
-async def get_channels(client: TelegramClient) -> [TG_CHANNEL]:
-    last_date = None
-    size_chats = 200
-    result = await client(GetDialogsRequest(
-        offset_date=last_date,
-        offset_id=0,
-        offset_peer=InputPeerEmpty(),
-        limit=size_chats,
-        hash=0
-    ))
-    tg_channels_by_ids = {ch.id: ch for ch in result.chats if isinstance(ch, TG_CHANNEL)}
-    await create_new_channels_in_db(tg_channels_by_ids)
-    return tg_channels_by_ids.values()
-
-
-async def create_new_channels_in_db(tg_ch_by_id: {int: TG_CHANNEL}):
-    new_channels = []
-    existing_channels = DJ_CHANNEL.objects.values_list('pk', flat=True)
-    existing_pks = []
-    async for pk in existing_channels:
-        existing_pks.append(pk)
-    for tg_channel_id, tg_channel in tg_ch_by_id.items():
-        if tg_channel_id not in existing_pks:
-            new_channels.append(
-                DJ_CHANNEL(
-                    pk=tg_channel_id,
-                    name=tg_channel.title
-                )
-            )
-    await DJ_CHANNEL.objects.abulk_create(new_channels)
-
-
-async def get_ch_messages(client: TelegramClient, target_ch: TG_CHANNEL) -> {int: [TG_MESSAGE]}:
-    all_messages = []
-    offset_id = 0
-    limit = 3
-    total_messages = 0
-    total_count_limit = 0
-    while True:
-        history = await client(GetHistoryRequest(
-            peer=target_ch,
-            offset_id=offset_id,
-            # offset_date=datetime.now() - relativedelta(days=1),  # yesterday
-            # offset_date=datetime.now(),  # today
-            offset_date=None,  # all
-            add_offset=0,
-            limit=limit,
-            max_id=0,
-            min_id=0,
-            hash=0
-        ))
-        if not history.messages:
-            break
-        messages = []
-        for message in history.messages:
-            if isinstance(message, TG_MESSAGE):
-                all_messages.append(message.to_dict())
-        # offset_id = messages[len(messages) - 1].id
-        # if total_count_limit != 0 and total_messages >= total_count_limit:
-        #     break
-        break
-    return {target_ch.id: all_messages}
-
-
-def get_reactions_count(message: dict):
-    if (reactions_dict := message.get('reactions')):
-        if (res := reactions_dict.get('results')):
-            try:
-                return res[0].get('count')
-            except (IndexError, KeyError):
-                return 0
-    return 0
-
-
-'''
-1 мин , 2 мин , 3 мин , 4 мин ,5 мин, 10 мин , 15 мин ,20 мин, 25 ,30 мин, 35, 45 мин, 50, 55, 1 час | end
-
-Message:
-    current_reaction_coef = message.reaction / message.views
-    current_forward_coef = message.forward / message.views
-
-scheduler_one_min():
-    channels = Channel.objects.all()
-    async for channel in channels:
-        messages = channel.messages.filter(len(metrics)__lt=5)
-        mes_ids = [mes.id for mes in messages]
-        min_mes_id, max_mes_id = min(mes_ids), max(mes_ids)
-        history = await client(GetHistoryRequest(
-            peer=target_ch,
-            offset_id=0,
-            offset_date=None,
-            add_offset=0,
-            limit=limit,
-            max_id=max_mes_id+1,
-            min_id=min_mes_id-1,
-            hash=0
-        ))
-        
-scheduler_five_min():
-    Message.object.filter(len(metrics)__gte=5, len(metrics)__lt=15)
-
-Metrics:
-    views
-    reactions
-    forwards
-    created_at
-'''
+    async with client:
+        scheduler.start()  # run scheduler
+        await periodic_tasks.update_uploaded_channels(client)  # upload new channels
+        await client.run_until_disconnected()

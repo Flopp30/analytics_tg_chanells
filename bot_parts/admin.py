@@ -15,7 +15,7 @@ from bot_parts.models import ExternalSettings
 @admin.register(ExternalSettings)
 class SettingsAdmin(admin.ModelAdmin):
     list_display = (
-        "edit", 'max_forward_coef', 'max_reaction_coef', 'additional_percents_for_repost'
+        "edit", 'additional_percents_for_repost'
     )
     list_per_page = 1
 
