@@ -52,7 +52,7 @@ async def main(phone: str, api_id: int, api_hash: str):
         trigger=IntervalTrigger(minutes=1),
         kwargs={
             "client": client,
-            "one_minute": True,
+            "one_min": True,
         }
     )
     second_task = scheduler.add_job(
@@ -60,7 +60,7 @@ async def main(phone: str, api_id: int, api_hash: str):
         trigger=IntervalTrigger(minutes=settings.STARTING_INTERVAL_SECOND_TASK),
         kwargs={
             "client": client,
-            "one_minute": False,
+            "one_min": False,
         }
     )
     scheduler.add_job(

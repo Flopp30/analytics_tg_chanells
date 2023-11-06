@@ -35,6 +35,16 @@ class ExternalSettings(SingletonModel):
         choices=interval_choices,
         default=5
     )
+    min_messages_count_before_repost = models.IntegerField(
+        verbose_name='Минимальное количество сообщений',
+        help_text='Минимальное количество сообщений в канале до отправки репоста',
+        default=20
+    )
+    min_metrics_count_before_repost = models.IntegerField(
+        verbose_name='Количество метрик',
+        help_text='Количество метрик у сообщения до отправки репоста',
+        default=5
+    )
 
     class Meta:
         verbose_name = 'Настройки'

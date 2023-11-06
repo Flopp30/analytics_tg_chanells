@@ -30,16 +30,8 @@ async def update_uploaded_channels(client: TelegramClient):
     await DjChannel.objects.abulk_create(new_dj_channels)
 
 
-async def check_messages(client: TelegramClient, one_minute: bool = True):
-    if one_minute:
-        filter_kwargs = {
-            "metrics_count__lt": 5  # 5 раз трекаем с интервалом минута
-        }
-    else:
-        filter_kwargs = {
-            "metrics_count__gte": 5,  # 10 раз трекаем с интервалом в 5 минут или 5 раз с интервалом в 10
-            "metrics_count__lt": 15 if settings.STARTING_INTERVAL_SECOND_TASK == 5 else 10,
-        }
+async def check_messages(client: TelegramClient, one_min: bool = True):
+    filter_kwargs = _get_filter_kwargs(one_min)
     channels = (
         DjChannel.objects
         .select_related('category')
@@ -70,7 +62,14 @@ async def check_messages(client: TelegramClient, one_minute: bool = True):
     )
 
 
-async def channel_process(dj_channel, filter_kwargs, client, updated_messages, created_metrics, updated_channels):
+async def channel_process(
+        dj_channel: DjChannel,
+        filter_kwargs: dict,
+        client: TelegramClient,
+        updated_messages: list,
+        created_metrics: list,
+        updated_channels: list
+):
     messages = (
         dj_channel.messages
         .prefetch_related('metrics')
@@ -83,7 +82,8 @@ async def channel_process(dj_channel, filter_kwargs, client, updated_messages, c
     }
 
     async for tg_mes in client.iter_messages(dj_channel.chat_id, ids=list(mes_by_tg_ids.keys())):
-        tg_mes: TgMessage
+        if not tg_mes:
+            continue  # TODO Deleted message. Удалять его из базы? или хотя бы логгировать
         dj_mes: DjMessage = mes_by_tg_ids.get(tg_mes.id)
         dj_mes.forwards = tg_mes.forwards
         dj_mes.views = tg_mes.views / 100
@@ -97,7 +97,9 @@ async def channel_process(dj_channel, filter_kwargs, client, updated_messages, c
         await _update_message_coeffs(dj_mes)
         await _update_channel_coeffs(dj_channel, updated_channels)
 
-        if dj_channel.messages_count >= 20 and dj_mes.metrics_count == 4:
+        first = dj_channel.messages_count >= settings.MIN_MESSAGES_COUNT_BEFORE_REPOST
+        second = dj_mes.metrics_count + 1 == settings.MIN_METRICS_COUNT_BEFORE_REPOST  # added current metric
+        if first and second:
             await _forward_message(client, dj_mes, dj_channel, tg_mes)
 
 
@@ -155,3 +157,16 @@ async def _forward_message(
             )
             await client.send_message(target_chat_id, message)
             await client.forward_messages(target_chat_id, tg_mes)
+
+
+def _get_filter_kwargs(one_min) -> dict:
+    if one_min:
+        filter_kw = {
+            "metrics_count__lt": 5  # 5 раз трекаем с интервалом минута
+        }
+    else:
+        filter_kw = {
+            "metrics_count__gte": 5,  # 10 раз трекаем с интервалом в 5 минут или 5 раз с интервалом в 10
+            "metrics_count__lt": 15 if settings.STARTING_INTERVAL_SECOND_TASK == 5 else 10,
+        }
+    return filter_kw

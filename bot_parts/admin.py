@@ -15,7 +15,8 @@ from bot_parts.models import ExternalSettings
 @admin.register(ExternalSettings)
 class SettingsAdmin(admin.ModelAdmin):
     list_display = (
-        "edit", 'additional_percents_for_repost', 'starting_interval_second_task'
+        "edit", 'additional_percents_for_repost', 'starting_interval_second_task', 'min_messages_count_before_repost',
+        'min_metrics_count_before_repost'
     )
     list_per_page = 1
 
