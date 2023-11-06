@@ -49,7 +49,7 @@ async def main(phone: str, api_id: int, api_hash: str):
     scheduler = AsyncIOScheduler(timezone="Europe/Moscow")
     scheduler.add_job(
         periodic_tasks.check_messages,
-        trigger=IntervalTrigger(minutes=1),
+        trigger=IntervalTrigger(seconds=10),
         kwargs={
             "client": client,
             "one_min": True,
@@ -66,6 +66,13 @@ async def main(phone: str, api_id: int, api_hash: str):
     scheduler.add_job(
         periodic_tasks.update_uploaded_channels,
         trigger=IntervalTrigger(minutes=10),
+        kwargs={
+            "client": client,
+        }
+    )
+    scheduler.add_job(
+        periodic_tasks.clean_db,
+        trigger=IntervalTrigger(days=1),
         kwargs={
             "client": client,
         }
@@ -88,7 +95,11 @@ async def main(phone: str, api_id: int, api_hash: str):
             )
             await client.send_message('me', message)
 
-        if event.message.message == '!restart_task':
+        elif event.message.message == '!update_channels':
+            await periodic_tasks.update_uploaded_channels(client)
+            await client.send_message('me', 'Каналы успешно обновлены')
+
+        elif event.message.message == '!restart_task':
             global second_task
             scheduler.remove_job(second_task.id)
             second_task = scheduler.add_job(
@@ -96,7 +107,7 @@ async def main(phone: str, api_id: int, api_hash: str):
                 trigger=IntervalTrigger(minutes=settings.STARTING_INTERVAL_SECOND_TASK),
                 kwargs={
                     "client": client,
-                    "one_minute": False,
+                    "one_min": False,
                 }
             )
             message = f'Задача успешно перезапущена с интервалом в {settings.STARTING_INTERVAL_SECOND_TASK} минут'
@@ -106,29 +117,25 @@ async def main(phone: str, api_id: int, api_hash: str):
     async def create_new_post_in_db(event: NewMessage.Event):
         tg_mes = event.message
         if event.is_channel and isinstance(tg_mes, TgMessage):
-            dj_channel, _ = (
-                await DjChannel.objects
-                .aget_or_create(
-                    chat_id=event.chat_id,
-                    defaults={
-                        "name": event.chat.title,
-                    }
-                )
-            )
+            try:
+                dj_channel = await DjChannel.objects.aget(chat_id=event.chat_id)
+            except DjMessage.DoesNotExist:
+                return
+
             if dj_channel.is_tracking:
                 dj_message, is_created = await DjMessage.objects.aget_or_create(
                     tg_message_id=tg_mes.id,
                     channel_id=dj_channel.pk,
                     defaults={
                         "text": tg_mes.message,
-                        "views": tg_mes.views or 0,
+                        "views": tg_mes.views or 0 / settings.VIEWS_DIV,
                         "forwards": tg_mes.forwards or 0,
                         "reactions": get_reactions_count(tg_mes),
                     }
                 )
                 if not is_created:
                     dj_message.message = tg_mes.message
-                    dj_message.views = tg_mes.views / 100 or 0
+                    dj_message.views = tg_mes.views / settings.VIEWS_DIV or 0
                     dj_message.forwards = tg_mes.forwards or 0
                     dj_message.reactions = get_reactions_count(tg_mes)
 

@@ -34,6 +34,10 @@ class Message(models.Model):
         decimal_places=2,
         default=1
     )
+    is_forwarded = models.BooleanField(
+        verbose_name='Переслан?',
+        default=False
+    )
 
     class Meta:
         verbose_name = 'Сообщение'

@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import models, OperationalError
 
 
@@ -44,6 +45,18 @@ class ExternalSettings(SingletonModel):
         verbose_name='Количество метрик',
         help_text='Количество метрик у сообщения до отправки репоста',
         default=5
+    )
+    messages_ttl = models.IntegerField(
+        verbose_name='Длительность хранения сообщений',
+        help_text='В днях, метрики удаляются вместе. 0 - не удалять вообще никакие сообщения.',
+        default=30
+    )
+
+    views_div = models.IntegerField(
+        verbose_name='Знаменатель для просмотров в формуле',
+        help_text='rection coef = reactions / (views / знаменатель)',
+        default=100,
+        validators=[MinValueValidator(0.1, message='Делитель должен быть строго больше 0')]
     )
 
     class Meta:
