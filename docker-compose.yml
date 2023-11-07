@@ -2,31 +2,41 @@ version: "3.7"
 
 services:
 
-  postgres:
+  db:
     image: postgres
     env_file:
       - .env
     volumes:
       - db_data:/var/lib/postgresql/data
     ports:
-      - "127.0.0.1:5432:5432"
+      - "5432:5432"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    command: bash -c 'while !</dev/tcp/db/5432; do sleep 1; done; python3 manage.py collectstatic --no-input; python3 manage.py migrate; python manage.py runserver 0.0.0.0:8000 --noreload'
+    volumes:
+      - .:/app/
+      - static:/app/static
+    depends_on:
+      - db
+    restart: on-failure
 
   nginx:
-    image: nginx
+    image: nginx:alpine
+    command: nginx -g "daemon off;"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - static:/var/www/app/static/
+    depends_on:
+      - app
     ports:
       - '8000:80'
-    environment:
-      UPSTREAM_SERVER: 127.0.0.1:8000
-    volumes:
-      - ./nginx-templates:/etc/nginx/templates/
-      - nginx_assets:/var/www/static/
-      - nginx_media:/var/www/media/
-    depends_on:
-      - postgres-admin
-
-
 
 volumes:
   db_data:
-  nginx_media:
   nginx_assets:
+  static:

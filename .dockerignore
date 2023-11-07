@@ -1,0 +1,6 @@
+venv
+*.session
+README.md
+*.sql*
+LICENSE
+.idea
