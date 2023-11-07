@@ -68,7 +68,7 @@ async def check_messages(client: TelegramClient, one_min: bool = True):
         updated_messages,
         [
             'views', 'forwards', 'reactions', 'average_forward_coef',
-            'average_reaction_coef', 'is_forwarded'
+            'average_reaction_coef', 'is_forwarded', 'updated_at'
         ]
     )
     await DjChannel.objects.abulk_update(
@@ -102,6 +102,7 @@ async def channel_process(
         dj_mes.forwards = tg_mes.forwards or 0
         dj_mes.views = tg_mes.views or 0 / settings.VIEWS_DIV
         dj_mes.reactions = get_reactions_count(tg_mes)
+        dj_mes.updated_at = timezone.now()
 
         updated_messages.append(dj_mes)
         new_metric = Metric()

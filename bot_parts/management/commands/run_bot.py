@@ -45,11 +45,11 @@ class Command(BaseCommand):
 
 async def main(phone: str, api_id: int, api_hash: str):
     global second_task
-    client = TelegramClient(phone, api_id, api_hash)
+    client = TelegramClient(phone, api_id, api_hash, system_version="4.16.30-vxCUSTOM")
     scheduler = AsyncIOScheduler(timezone="Europe/Moscow")
     scheduler.add_job(
         periodic_tasks.check_messages,
-        trigger=IntervalTrigger(seconds=10),
+        trigger=IntervalTrigger(minutes=1),
         kwargs={
             "client": client,
             "one_min": True,

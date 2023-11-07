@@ -72,5 +72,5 @@ try:
     for key, value in ext_settings.__dict__.items():
         if key != 'id' and not key.startswith('_'):
             setattr(settings, key.upper(), value)
-except OperationalError:
+except Exception:
     pass
