@@ -19,14 +19,24 @@ class CategoryAdmin(admin.ModelAdmin):
 @admin.register(Channel)
 class ChannelAdmin(admin.ModelAdmin):
     list_display = (
-        'id', 'average_react_coef', 'average_forward_coef', 'chat_id', 'name', "category", "created_at", "updated_at"
+        'id',
+        'average_react_coef',
+        'average_forward_coef',
+        'chat_id',
+        'name',
+        'category',
+        'is_tracking',
+        'created_at',
+        'updated_at'
     )
+    list_display_links = ('name',)
     list_filter = (
         'name',
         'category',
         'created_at',
-        'updated_at'
+        'updated_at',
+        'is_tracking'
     )
     ordering = ('-id', 'category', 'name', 'created_at')
-    list_per_page = 20
+    list_per_page = 200
     search_fields = ('name', 'category__name')
