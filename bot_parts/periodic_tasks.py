@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import logging
 from types import NoneType
 
 from django.conf import settings
@@ -12,6 +13,8 @@ from bot_parts.utils import get_reactions_count
 from channel.models import Channel as DjChannel
 from message.models import Message as DjMessage
 from metrics.models import Metric
+
+logger = logging.getLogger(__name__)
 
 
 async def clean_db(client: TelegramClient):
@@ -155,14 +158,15 @@ async def _forward_message(
     if first and second:
 
         add_perc = settings.ADDITIONAL_PERCENTS_FOR_REPOST + 100
-        first = dj_mes.average_reaction_coef > dj_channel.average_react_coef * add_perc
-        second = dj_mes.average_forward_coef > dj_channel.average_forward_coef * add_perc
+        first = dj_mes.average_reaction_coef > dj_channel.average_react_coef * add_perc / 100
+        second = dj_mes.average_forward_coef > dj_channel.average_forward_coef * add_perc / 100
 
         if first or second:
             try:
                 target_chat_id = int(dj_channel.category.target_chat_id)
             except (ValueError, AttributeError):
-                pass
+                logger.warning(f'Сообщение {dj_mes.pk} не отправилось из-за ошибки')
+
             else:
                 message = (
                     f"Реакции канала: {dj_channel.average_react_coef}\n"
