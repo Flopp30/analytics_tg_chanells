@@ -158,9 +158,13 @@ async def _forward_message(
     if first and second:
 
         add_perc = settings.ADDITIONAL_PERCENTS_FOR_REPOST + 100
-        first = dj_mes.average_reaction_coef > dj_channel.average_react_coef * add_perc / 100
-        second = dj_mes.average_forward_coef > dj_channel.average_forward_coef * add_perc / 100
+        first = dj_mes.average_reaction_coef >= dj_channel.average_react_coef * add_perc / 100
+        second = dj_mes.average_forward_coef >= dj_channel.average_forward_coef * add_perc / 100
 
+        logger.info(f'Percent: {add_perc}')
+        logger.info(f'Reactions {first}: Channel={dj_channel.average_react_coef}, Message={dj_mes.average_reaction_coef}')
+        logger.info(f'Forwards {second}: Channel={dj_channel.average_forward_coef}, Message={dj_mes.average_forward_coef}')
+        logger.info(f'{"-" * 30}')
         if first or second:
             try:
                 target_chat_id = int(dj_channel.category.target_chat_id)

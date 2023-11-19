@@ -15,8 +15,8 @@ class Metric(models.Model):
         null=False,
         blank=False
     )
-    reaction_coef = models.DecimalField(verbose_name='Коэффициент реакций', max_digits=10, decimal_places=2, default=0)
-    forwards_coef = models.DecimalField(verbose_name='Коэффициент репостов', max_digits=10, decimal_places=2, default=0)
+    reaction_coef = models.DecimalField(verbose_name='Коэффициент реакций', max_digits=10, decimal_places=5, default=0)
+    forwards_coef = models.DecimalField(verbose_name='Коэффициент репостов', max_digits=10, decimal_places=5, default=0)
     created_at = models.DateTimeField(verbose_name='Создан', auto_now_add=True)
 
     class Meta:
