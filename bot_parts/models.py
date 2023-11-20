@@ -27,7 +27,7 @@ class ExternalSettings(SingletonModel):
         verbose_name='Процент превышения',
         help_text='Процент превышения, при котором репостим (%)',
         max_digits=5,
-        decimal_places=5,
+        decimal_places=2,
         default=30
     )
     starting_interval_second_task = models.IntegerField(

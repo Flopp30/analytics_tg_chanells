@@ -39,7 +39,7 @@ class Channel(models.Model):
     average_react_coef = models.DecimalField(
         verbose_name='Коэф. реакции',
         decimal_places=5,
-        max_digits=5,
+        max_digits=10,
         default=None,
         null=True,
         blank=True,
@@ -47,7 +47,7 @@ class Channel(models.Model):
     average_forward_coef = models.DecimalField(
         verbose_name='Коэф. репоста',
         decimal_places=5,
-        max_digits=5,
+        max_digits=10,
         default=None,
         null=True,
         blank=True,
