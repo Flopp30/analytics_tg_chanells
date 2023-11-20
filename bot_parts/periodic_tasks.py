@@ -16,6 +16,12 @@ from metrics.models import Metric
 
 logger = logging.getLogger(__name__)
 
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
 
 async def clean_db(client: TelegramClient):
     if settings.MESSAGES_TTL != 0:
