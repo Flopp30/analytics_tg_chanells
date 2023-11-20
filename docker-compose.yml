@@ -21,6 +21,8 @@ services:
     volumes:
       - .:/app/
       - static:/app/static
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     depends_on:
       - db
     restart: on-failure
