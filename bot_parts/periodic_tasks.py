@@ -155,6 +155,8 @@ async def _forward_message(
 ):
     first = dj_channel.messages_count >= settings.MIN_MESSAGES_COUNT_BEFORE_REPOST
     second = dj_mes.metrics_count + 1 == settings.MIN_METRICS_COUNT_BEFORE_REPOST  # added current metric
+
+    logger.info(f'{first and second}: Message count in channel: {first}, Metric count in message: {second}')
     if first and second:
 
         add_perc = settings.ADDITIONAL_PERCENTS_FOR_REPOST + 100

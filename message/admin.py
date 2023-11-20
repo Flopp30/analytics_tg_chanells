@@ -13,7 +13,7 @@ class MetricAdminInline(admin.TabularInline):
 class MessageAdmin(admin.ModelAdmin):
     list_display = (
         'id', "channel", 'average_forward_coef', 'average_reaction_coef', 'views',
-        "reactions", "forwards", "created_at", "updated_at"
+        "reactions", "forwards", 'is_forwarded', "created_at", "updated_at"
     )
     list_filter = (
         'channel',
