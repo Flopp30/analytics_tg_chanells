@@ -17,7 +17,7 @@ class MessageAdmin(admin.ModelAdmin):
     )
     list_filter = (
         'channel',
-        'forwards',
+        'is_forwarded',
         "created_at",
         "updated_at"
     )

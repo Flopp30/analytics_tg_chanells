@@ -23,16 +23,16 @@ class Message(models.Model):
     average_reaction_coef = models.DecimalField(  # message.reaction / message.views
         verbose_name='Коэффициент реакций',
         help_text='Текущий коэффициент',
-        max_digits=5,
+        max_digits=10,
         decimal_places=5,
-        default=1
+        default=0
     )
     average_forward_coef = models.DecimalField(  # message.forward / message.views
         verbose_name='Коэффициент репостов',
         help_text='Текущий коэффициент',
-        max_digits=5,
+        max_digits=10,
         decimal_places=5,
-        default=1
+        default=0
     )
     is_forwarded = models.BooleanField(
         verbose_name='Переслан?',

@@ -40,7 +40,7 @@ class Channel(models.Model):
         verbose_name='Коэф. реакции',
         decimal_places=5,
         max_digits=10,
-        default=None,
+        default=0,
         null=True,
         blank=True,
     )
@@ -48,7 +48,7 @@ class Channel(models.Model):
         verbose_name='Коэф. репоста',
         decimal_places=5,
         max_digits=10,
-        default=None,
+        default=0,
         null=True,
         blank=True,
     )
