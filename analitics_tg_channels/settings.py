@@ -86,6 +86,99 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{asctime} {levelname} {name} | {filename}>{funcName}():{lineno} | {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{asctime} {levelname} {module} {message}',
+            'style': '{',
+        },
+    },
+    'filters': {
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        }
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        # 'mail_admins': {
+        #     'level': 'ERROR',
+        #     'class': 'django.utils.log.AdminEmailHandler',
+        #     'include_html': True,
+        #     'filters': ['require_debug_false']
+        # },
+        'debug_file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': env('DEBUG_LOG', './logs/django-debug.log'),
+            'filters': ['require_debug_true']
+        },
+        'errors_file': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': env('ERROR_LOG', './logs/django-error.log'),
+            'when': 'MIDNIGHT',
+            'backupCount': 7,
+            'formatter': 'verbose',
+        },
+        'base_log': {
+            'level': 'INFO',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': env('BASE_LOG', './logs/django-base.log'),
+            'when': 'MIDNIGHT',
+            'backupCount': 7,
+            'formatter': 'verbose',
+        },
+        'base_log_warning': {
+            'level': 'WARNING',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': env('BASE_LOG', './logs/django-base.log'),
+            'when': 'MIDNIGHT',
+            'backupCount': 7,
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django.security.DisallowedHost': {
+            'handlers': ['console', 'errors_file', 'base_log'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'django': {
+            'handlers': ['console', 'errors_file', 'base_log'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'django.db': {
+            'level': 'INFO',
+            'handlers': ['console'],
+            'propagate': True,
+        },
+        'django.server': {
+            'level': 'INFO',
+            'handlers': ['console', 'base_log_warning'],
+            'propagate': False,
+        },
+        '': {
+            'level': 'INFO',
+            'handlers': ['console', 'base_log', 'errors_file'],
+            'propagate': True,
+        }
+    }
+}
+
 LANGUAGE_CODE = 'ru-ru'
 
 TIME_ZONE = 'UTC'
