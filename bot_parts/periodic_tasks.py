@@ -7,6 +7,7 @@ from django.conf import settings
 from django.db.models import Count
 from django.utils import timezone
 from telethon import TelegramClient
+from telethon.errors import ChatForwardsRestrictedError
 from telethon.tl.types import Message as TgMessage
 
 from bot_parts.utils import get_reactions_count
@@ -172,7 +173,7 @@ async def _forward_message(
         logger.info(f'Percent: {add_perc}')
         logger.info(f'Reactions {first}: Channel={dj_channel.average_react_coef}, Message={dj_mes.average_reaction_coef}')
         logger.info(f'Forwards {second}: Channel={dj_channel.average_forward_coef}, Message={dj_mes.average_forward_coef}')
-        logger.info(f'{"-" * 30}')
+
         if first or second:
             try:
                 target_chat_id = int(dj_channel.category.target_chat_id)
@@ -180,15 +181,42 @@ async def _forward_message(
                 logger.warning(f'Сообщение {dj_mes.pk} не отправилось из-за ошибки')
 
             else:
-                message = (
-                    f"Реакции канала: {dj_channel.average_react_coef}\n"
-                    f"Реакции сообщения: {dj_mes.average_reaction_coef}\n\n"
-                    f"Репосты канала: {dj_channel.average_forward_coef}\n"
-                    f"Репосты сообщения: {dj_mes.average_forward_coef}\n\n"
-                )
-                await client.send_message(target_chat_id, message)
-                await client.forward_messages(target_chat_id, tg_mes)
-                dj_mes.is_forwarded = True
+                if first and not second:
+                    message = (
+                        f"<b>Реакции канала: {dj_channel.average_react_coef}</b>\n"
+                        f"<b>Реакции сообщения: {dj_mes.average_reaction_coef}</b>\n\n"
+                        f"Репосты канала: {dj_channel.average_forward_coef}\n"
+                        f"Репосты сообщения: {dj_mes.average_forward_coef}\n\n"
+                    )
+                elif second and not first:
+                    message = (
+                        f"Реакции канала: {dj_channel.average_react_coef}\n"
+                        f"Реакции сообщения: {dj_mes.average_reaction_coef}\n\n"
+                        f"<b>Репосты канала: {dj_channel.average_forward_coef}</b>\n"
+                        f"<b>Репосты сообщения: {dj_mes.average_forward_coef}</b>\n\n"
+                    )
+                else:
+                    message = (
+                        f"<b>Реакции канала: {dj_channel.average_react_coef}</b>\n"
+                        f"<b>Реакции сообщения: {dj_mes.average_reaction_coef}</b>\n\n"
+                        f"<b>Репосты канала: {dj_channel.average_forward_coef}</b>\n"
+                        f"<b>Репосты сообщения: {dj_mes.average_forward_coef}</b>\n\n"
+                    )
+
+                await client.send_message(target_chat_id, message, parse_mode='HTML')
+
+                try:
+                    await client.forward_messages(target_chat_id, tg_mes)
+                except ChatForwardsRestrictedError:
+                    message = (f'Канал {dj_channel.name} отключен в связи с тем, что в нем отключена пересылка сообщений.'
+                               f' Рекомендуем удалить его из админ панели. ID сообщения {dj_mes.pk}. \n\n {dj_mes.text}')
+                    await client.send_message(target_chat_id, message)
+                    dj_channel.is_tracking = False
+                    await dj_channel.asave()
+                finally:
+                    dj_mes.is_forwarded = True
+                    await dj_mes.asave()
+
 
 
 def _get_filter_kwargs(one_min) -> dict:
