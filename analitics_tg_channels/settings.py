@@ -192,3 +192,4 @@ STATIC_URL = '/static/'
 STATIC_ROOT = './static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+STARTING_INTERVAL_SECOND_TASK = env.int('STARTING_INTERVAL_SECOND_TASK', 5)
