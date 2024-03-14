@@ -160,35 +160,42 @@ async def _forward_message(
         dj_channel: DjChannel,
         tg_mes: TgMessage
 ):
-    first = dj_channel.messages_count >= settings.MIN_MESSAGES_COUNT_BEFORE_REPOST
-    second = dj_mes.metrics_count + 1 == settings.MIN_METRICS_COUNT_BEFORE_REPOST  # added current metric
+    rule_message_count = dj_channel.messages_count >= settings.MIN_MESSAGES_COUNT_BEFORE_REPOST
+    rule_metric_count = dj_mes.metrics_count + 1 == settings.MIN_METRICS_COUNT_BEFORE_REPOST  # added current metric
 
-    logger.info(f'{first and second}: Message count in channel: {first}, Metric count in message: {second}')
-    if first and second:
+    logger.info(f'{rule_message_count and rule_metric_count}: Message count in channel: {rule_message_count}, Metric count in message: {rule_metric_count}')
+    if rule_message_count and rule_metric_count:
 
         add_perc = settings.ADDITIONAL_PERCENTS_FOR_REPOST + 100
-        first = dj_mes.average_reaction_coef >= dj_channel.average_react_coef * add_perc / 100
-        second = dj_mes.average_forward_coef >= dj_channel.average_forward_coef * add_perc / 100
+        """
+        Uncomment if you need to return the check of the reaction coefficients
+        
+        # react_rule = dj_mes.average_reaction_coef >= dj_channel.average_react_coef * add_perc / 100 
+        """
+        react_rule = False
+        forward_rule = dj_mes.average_forward_coef >= dj_channel.average_forward_coef * add_perc / 100
 
         logger.info(f'Percent: {add_perc}')
-        logger.info(f'Reactions {first}: Channel={dj_channel.average_react_coef}, Message={dj_mes.average_reaction_coef}')
-        logger.info(f'Forwards {second}: Channel={dj_channel.average_forward_coef}, Message={dj_mes.average_forward_coef}')
+        logger.info(
+            f'Reactions {react_rule}: Channel={dj_channel.average_react_coef}, Message={dj_mes.average_reaction_coef}')
+        logger.info(
+            f'Forwards {forward_rule}: Channel={dj_channel.average_forward_coef}, Message={dj_mes.average_forward_coef}')
 
-        if first or second:
+        if forward_rule or react_rule:
             try:
                 target_chat_id = int(dj_channel.category.target_chat_id)
             except (ValueError, AttributeError):
                 logger.warning(f'Сообщение {dj_mes.pk} не отправилось из-за ошибки')
 
             else:
-                if first and not second:
+                if react_rule and not forward_rule:
                     message = (
                         f"<b>Реакции канала: {dj_channel.average_react_coef}</b>\n"
                         f"<b>Реакции сообщения: {dj_mes.average_reaction_coef}</b>\n\n"
                         f"Репосты канала: {dj_channel.average_forward_coef}\n"
                         f"Репосты сообщения: {dj_mes.average_forward_coef}\n\n"
                     )
-                elif second and not first:
+                elif forward_rule and not react_rule:
                     message = (
                         f"Реакции канала: {dj_channel.average_react_coef}\n"
                         f"Реакции сообщения: {dj_mes.average_reaction_coef}\n\n"
@@ -208,15 +215,15 @@ async def _forward_message(
                 try:
                     await client.forward_messages(target_chat_id, tg_mes)
                 except ChatForwardsRestrictedError:
-                    message = (f'Канал {dj_channel.name} отключен в связи с тем, что в нем отключена пересылка сообщений.'
-                               f' Рекомендуем удалить его из админ панели. ID сообщения {dj_mes.pk}. \n\n {dj_mes.text}')
+                    message = (
+                        f'Канал {dj_channel.name} отключен в связи с тем, что в нем отключена пересылка сообщений.'
+                        f' Рекомендуем удалить его из админ панели. ID сообщения {dj_mes.pk}. \n\n {dj_mes.text}')
                     await client.send_message(target_chat_id, message)
                     dj_channel.is_tracking = False
                     await dj_channel.asave()
                 finally:
                     dj_mes.is_forwarded = True
                     await dj_mes.asave()
-
 
 
 def _get_filter_kwargs(one_min) -> dict:
