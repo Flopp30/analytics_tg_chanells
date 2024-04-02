@@ -167,12 +167,8 @@ async def _forward_message(
     if rule_message_count and rule_metric_count:
 
         add_perc = settings.ADDITIONAL_PERCENTS_FOR_REPOST + 100
-        """
-        Uncomment if you need to return the check of the reaction coefficients
-        
-        # react_rule = dj_mes.average_reaction_coef >= dj_channel.average_react_coef * add_perc / 100 
-        """
-        react_rule = False
+
+        react_rule = dj_mes.average_reaction_coef >= dj_channel.average_react_coef * add_perc / 100
         forward_rule = dj_mes.average_forward_coef >= dj_channel.average_forward_coef * add_perc / 100
 
         logger.info(f'Percent: {add_perc}')
